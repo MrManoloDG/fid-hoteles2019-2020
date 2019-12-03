@@ -1,0 +1,127 @@
+---
+title: "Quick visualization of data"
+author: "Jason Liu"
+date: "Aug 22,2017"
+output: 
+     html_document:
+            toc: true
+            highlight: zenburn
+            fig_height: 7
+            fig_width: 10
+            theme: sandstone
+---
+
+# Introduction
+
+The dataset contains 515k+ rows of review data for 1493 hotels in Europe. It is a good source to practice some data visulization skills in R. As the
+publisher of the dataset, I create this RMarkdown file to quickly demonstrating some cool visulization packages in R. Let's do it!
+
+**One good feature of RMarkdown is the tabset, which can make your report more tide and clean. I incoporate it in the report, and highly recommend anyone who use RMarkdown try it!**
+
+# Read Data and Load Packages
+
+```{r,message=FALSE,warning=FALSE}
+library(sqldf)
+library(plotly)
+library(leaflet)
+library(leaflet.extras)
+library(ggplot2)
+library(wordcloud2)
+library(tm)
+df <- read.csv('./Datasets/Hotel_Reviews.csv')
+```
+# Visulization of non-text data
+
+First, we will go through the non-text data as a starting point.
+
+## Location of hotels {.tabset}
+
+This part we make two plots in Leaflet, which is one of the most popular map package in R. By easily change some of the code you can make your plot 
+more fancy than you imagine!
+
+### Hotel Cluster
+
+```{r results='asis' ,message=FALSE,warning=FALSE}
+location <- df[!duplicated(df[,c('lat','lng','Hotel_Address')]),c('lat','lng','Hotel_Address','Average_Score')]
+leaflet(data = location)%>%addProviderTiles(providers$Stamen.TonerLite)%>%addMarkers(popup = ~Hotel_Address,clusterOptions = markerClusterOptions())
+```
+
+### Exact Location
+
+```{r results='asis' ,message=FALSE,warning=FALSE}
+leaflet(data = location)%>%addProviderTiles(providers$Esri.NatGeoWorldMap)%>%addMarkers(popup = ~Hotel_Address)
+```
+
+## Scoring of Reviewer {.tabset}
+
+In this part we will generate some plots in ggplotly, which combine the good user interface of ggplot2 and the interactive characteristics of plotly.
+
+### Distribution of scores
+
+```{r results='asis' ,message=FALSE,warning=FALSE}
+g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Reviewer_Score)) + geom_histogram(binwidth = 1)+theme_bw()+ggtitle('Distribution of reviewer socres')
+ggplotly(g)
+```
+
+### Nationality with highest scores
+
+```{r results='asis' ,message=FALSE,warning=FALSE}
+avgscore_nation <- sqldf('SELECT Reviewer_Nationality, avg(Reviewer_Score) as avg_score from df group by Reviewer_Nationality order by avg(Reviewer_Score) desc')
+avgscore_nation[166,1]<-'UnKnown'
+g <- ggplot(avgscore_nation[1:20,],aes(x=Reviewer_Nationality,y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with highest average score')
+ggplotly(g)
+```
+
+### Nationality with lowest scores
+
+```{r results='asis' ,message=FALSE,warning=FALSE}
+g <- ggplot(avgscore_nation[207:227,],aes(x=Reviewer_Nationality,y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with lowest average score')
+ggplotly(g)
+```
+
+### Relationship between frequency of review and score
+
+```{r results='asis' ,message=FALSE,warning=FALSE}
+g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Total_Number_of_Reviews_Reviewer_Has_Given,y=Reviewer_Score)) + geom_point()+theme_bw()+geom_smooth(method = "lm")+ggtitle('Correlation between score and review frequency')
+ggplotly(g)
+```
+
+# Visulization of text data
+
+In this part, we plot the text data by using package 'wordcloud2', which is a good interactive wordcloud package in R. It is definitely cooler than the classic wordcloud package.
+
+## WordCloud Positive Review
+
+```{r results='asis' ,message=FALSE,warning=FALSE}
+reviews <- df[sample(nrow(df), 40000), ]
+reviews <- reviews[reviews$Positive_Review!='No Positive',]
+reviews <- reviews[reviews$Negative_Review!='No Negative',]
+term_freq <- function(df,sent){
+  if(sent=='pos'){
+       corpus <- Corpus(VectorSource(df$Positive_Review))
+  }else{
+       corpus <- Corpus(VectorSource(df$Negative_Review))
+  }
+  corpus <- tm_map(corpus, removeWords, stopwords("SMART"))
+  corpus <- tm_map(corpus, removeWords, stopwords("en"))
+  corpus <- tm_map(corpus, stripWhitespace)
+  dtm <-TermDocumentMatrix(corpus)
+  mat_dtm <- as.matrix(dtm)
+  v_dtm <- sort(rowSums(mat_dtm),decreasing = TRUE)
+  FreqMat <- data.frame(word = names(v_dtm), Freq = v_dtm)
+  FreqMat <- FreqMat[1:50,]
+  return(FreqMat)
+}
+wordcloud2(data = term_freq(reviews,'pos'),minRotation = 0,maxRotation = 0)
+```
+
+## WordCloud Negative Review
+
+
+```{r results='asis' ,message=FALSE,warning=FALSE}
+wordcloud2(data = term_freq(reviews,'neg'),minRotation = 0,maxRotation = 0)
+```
+
+# Wrap it up
+
+You can have a lot of fun when visualizing the data, and what I have done is just a starting point! Can you make a further step based on that?
