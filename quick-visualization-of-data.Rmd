@@ -40,6 +40,8 @@ This part we make two plots in Leaflet, which is one of the most popular map pac
 more fancy than you imagine!
 
 ### Hotel Cluster
+#################
+Se muestra los hoteles de lujo mas visitados por los turistas en las ciudades mas visitadas en el ranking anual. Barcelona, Paris, Londes,...
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 location <- df[!duplicated(df[,c('lat','lng','Hotel_Address')]),c('lat','lng','Hotel_Address','Average_Score')]
@@ -47,16 +49,35 @@ leaflet(data = location)%>%addProviderTiles(providers$Stamen.TonerLite)%>%addMar
 ```
 
 ### Exact Location
+#########
+Lo mismo que el anterior pero a color, para su posible exportación a una aplicacion.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 leaflet(data = location)%>%addProviderTiles(providers$Esri.NatGeoWorldMap)%>%addMarkers(popup = ~Hotel_Address)
 ```
+## Añadiendo campo countri a nuestro data frame
+Este campo se calcula
 
+```{r results='asis' ,message=FALSE,warning=FALSE}
+
+df%>%select(Hotel_Name,lat,lng,Hotel_Address)%>%group_by(Hotel_Address)%>%filter(!duplicated(Hotel_Address))->hotel_details
+hotel_details$country=sapply(str_split(hotel_details$Hotel_Address," "),function(x){x[length(x)]})
+hotel_details$city=sapply(str_split(hotel_details$Hotel_Address," "),function(x){x[length(x)-1]})
+## Remove the mention of "United" as "London" in the city column and "Kingdom" as "United Kingdom" in the country column
+hotel_details$city=str_replace(hotel_details$city,"United","London")
+hotel_details$country=str_replace(hotel_details$country,"Kingdom","United Kingdom")
+df%>%left_join(hotel_details[,4:6],by = 'Hotel_Address')->data
+countries=paste(unique(hotel_details$country),collapse=",")
+message=paste("The countries mentioned in the dataset are:", countries)
+print(message)
+```
 ## Scoring of Reviewer {.tabset}
 
 In this part we will generate some plots in ggplotly, which combine the good user interface of ggplot2 and the interactive characteristics of plotly.
 
 ### Distribution of scores
+
+Se muestra cuantos usuarios han dado esa puntuación al Hotel.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Reviewer_Score)) + geom_histogram(binwidth = 1)+theme_bw()+ggtitle('Distribution of reviewer socres')
@@ -65,25 +86,61 @@ ggplotly(g)
 
 ### Nationality with highest scores
 
+Las nacionalidaddes de usuarios que dan las mayores puntuaciones.
+
+#TODO - Ordenar por puntuaciones - DONE
+Modificacion ordenamos las nacionalidades por orden de puntuación media descendiente. Hecho con las funcion reorder en el eje x.
+
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 avgscore_nation <- sqldf('SELECT Reviewer_Nationality, avg(Reviewer_Score) as avg_score from df group by Reviewer_Nationality order by avg(Reviewer_Score) desc')
 avgscore_nation[166,1]<-'UnKnown'
-g <- ggplot(avgscore_nation[1:20,],aes(x=Reviewer_Nationality,y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with highest average score')
+g <- ggplot(avgscore_nation[1:20,],aes(x=reorder( Reviewer_Nationality, -avg_score),y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with highest average score')
 ggplotly(g)
 ```
 
 ### Nationality with lowest scores
+Las nacionalidaddes de usuarios que dan las peores puntuaciones.
+
+#TODO - Ordenar por puntuaciones - DONE
+Modificacion ordenamos las nacionalidades por orden de puntuación media ascendiente Hecho con las funcion reorder en el eje x.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
-g <- ggplot(avgscore_nation[207:227,],aes(x=Reviewer_Nationality,y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with lowest average score')
+g <- ggplot(avgscore_nation[207:227,],aes(x=reorder( Reviewer_Nationality, avg_score),y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with lowest average score')
+ggplotly(g)
+
+```
+
+### Comparacion Puntuacion y dias desde que dejó el hotel
+Numero de personas que dan una determinada puntuación 
+```{r results='asis' ,message=FALSE,warning=FALSE}
+#Añade una columa nueva a el data frame quitando los caracteres que no sean un numero sobre la columna data since review Ej: "3 days" -> 3
+df <- mutate(df, days_since_review_t= as.numeric(sub('[^0-9]+',"",days_since_review )))
+#print(df)
+g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=days_since_review_t,y=Reviewer_Score)) + geom_point()+theme_bw()+geom_smooth(method = "lm")+ggtitle('Correlation between score and review frequency')
 ggplotly(g)
 ```
 
-### Relationship between frequency of review and score
-
 ```{r results='asis' ,message=FALSE,warning=FALSE}
+avgscore_days <- sqldf('SELECT days_since_review_t , avg(Reviewer_Score) as avg_score 
+                       from (
+                          select case  
+                              when days_since_review_t between 0 and 50 then \'a) 0 a 50\'
+                              when days_since_review_t between 51 and 100 then \'b) 51 a 100\'
+                              when days_since_review_t between 101 and 150 then \'c) 101 a 150\'
+                              else \'d) mas de 150\' end as rango_dias, Reviewer_Score,
+                              days_since_review_t
+                            from df)
+                         group by rango_dias order by rango_dias desc')
+g <- ggplot(avgscore_days,aes(x=days_since_review_t,y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with highest average score')
+ggplotly(g)
+
+```
+
+```
+### Relationship between frequency of review and score
 g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Total_Number_of_Reviews_Reviewer_Has_Given,y=Reviewer_Score)) + geom_point()+theme_bw()+geom_smooth(method = "lm")+ggtitle('Correlation between score and review frequency')
 ggplotly(g)
+
 ```
 
 # Visulization of text data
@@ -109,9 +166,14 @@ term_freq <- function(df,sent){
   mat_dtm <- as.matrix(dtm)
   v_dtm <- sort(rowSums(mat_dtm),decreasing = TRUE)
   FreqMat <- data.frame(word = names(v_dtm), Freq = v_dtm)
+ # f <- index(FreqMat["the",])
+ # print(f)
+  #FreqMat <- FreqMat[-f]
+  #print(FreqMat)
   FreqMat <- FreqMat[1:50,]
   return(FreqMat)
 }
+
 wordcloud2(data = term_freq(reviews,'pos'),minRotation = 0,maxRotation = 0)
 ```
 
