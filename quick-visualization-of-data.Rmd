@@ -29,6 +29,12 @@ library(ggplot2)
 library(wordcloud2)
 library(tm)
 df <- read.csv('./Datasets/Hotel_Reviews.csv')
+
+df <- df %>% 
+      mutate(Review_year = substr(as.character(Review_Date),
+                                          nchar(as.character(Review_Date))-3,
+                                          nchar(as.character(Review_Date))))
+
 ```
 # Visulization of non-text data
 
@@ -187,3 +193,32 @@ wordcloud2(data = term_freq(reviews,'neg'),minRotation = 0,maxRotation = 0)
 # Wrap it up
 
 You can have a lot of fun when visualizing the data, and what I have done is just a starting point! Can you make a further step based on that?
+
+
+```{r}
+
+nationality <- df %>%
+  filter(Reviewer_Nationality != " ") %>%
+  select(Review_year,
+    Reviewer_Nationality,
+    Reviewer_Score,
+    Average_Score,
+    Total_Number_of_Reviews_Reviewer_Has_Given,
+    Total_Number_of_Reviews
+  ) %>%
+  mutate(Reviewer_Nationality = as.character(Reviewer_Nationality)) %>%
+  group_by(Reviewer_Nationality,Review_year) %>%
+  summarise(
+    Averager_Score = mean(Average_Score),
+    Reviewer_Score = mean(Reviewer_Score),
+    Total_Number_of_Reviews_Reviewer_Has_Given = sum(Total_Number_of_Reviews_Reviewer_Has_Given),
+    Total_Number_of_Reviews = n()
+  ) %>%
+  arrange(Reviewer_Nationality,Review_year)
+
+g <- ggplot(nationality, aes(Averager_Score)) + scale_fill_brewer(palette = "Accent")
+g + geom_histogram(aes(fill=Review_year), 
+                   binwidth = .1, 
+                   col="black", #TODO poner en español
+                   size=.1) + labs(title="Histogram - Year wise distribution of Average ratings")
+```
