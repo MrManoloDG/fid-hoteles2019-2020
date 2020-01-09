@@ -30,6 +30,7 @@ library(wordcloud2)
 library(tm)
 df <- read.csv('./Datasets/Hotel_Reviews.csv')
 
+# añadimos una columna nueva, año en el que se hizo la review
 df <- df %>% 
       mutate(Review_year = substr(as.character(Review_Date),
                                           nchar(as.character(Review_Date))-3,
@@ -46,8 +47,8 @@ This part we make two plots in Leaflet, which is one of the most popular map pac
 more fancy than you imagine!
 
 ### Hotel Cluster
-#################
-Se muestra los hoteles de lujo mas visitados por los turistas en las ciudades mas visitadas en el ranking anual. Barcelona, Paris, Londes,...
+
+Se muestran los hoteles de lujo mas visitados por los turistas a partir de las reviews realizadas en las ciudades mas visitadas en el ranking anual (Barcelona, Paris, Londes...)
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 location <- df[!duplicated(df[,c('lat','lng','Hotel_Address')]),c('lat','lng','Hotel_Address','Average_Score')]
@@ -55,23 +56,24 @@ leaflet(data = location)%>%addProviderTiles(providers$Stamen.TonerLite)%>%addMar
 ```
 
 ### Exact Location
-#########
-Lo mismo que el anterior pero a color, para su posible exportación a una aplicacion.
+
+Muestra el mismo resultado que el anterior pero con el mapa a color, para su posible exportación a una aplicacion.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 leaflet(data = location)%>%addProviderTiles(providers$Esri.NatGeoWorldMap)%>%addMarkers(popup = ~Hotel_Address)
 ```
-## Añadiendo campo countri a nuestro data frame
+## Añadiendo campo country a nuestro data frame
 Este campo se calcula
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
-
+library(stringr)
 df%>%select(Hotel_Name,lat,lng,Hotel_Address)%>%group_by(Hotel_Address)%>%filter(!duplicated(Hotel_Address))->hotel_details
 hotel_details$country=sapply(str_split(hotel_details$Hotel_Address," "),function(x){x[length(x)]})
 hotel_details$city=sapply(str_split(hotel_details$Hotel_Address," "),function(x){x[length(x)-1]})
 ## Remove the mention of "United" as "London" in the city column and "Kingdom" as "United Kingdom" in the country column
 hotel_details$city=str_replace(hotel_details$city,"United","London")
 hotel_details$country=str_replace(hotel_details$country,"Kingdom","United Kingdom")
+library(dplyr)
 df%>%left_join(hotel_details[,4:6],by = 'Hotel_Address')->data
 countries=paste(unique(hotel_details$country),collapse=",")
 message=paste("The countries mentioned in the dataset are:", countries)
@@ -83,7 +85,7 @@ In this part we will generate some plots in ggplotly, which combine the good use
 
 ### Distribution of scores
 
-Se muestra cuantos usuarios han dado esa puntuación al Hotel.
+Se muestran el numero de usuarios que han dado una puntuación al Hotel.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Reviewer_Score)) + geom_histogram(binwidth = 1)+theme_bw()+ggtitle('Distribution of reviewer socres')
@@ -126,18 +128,26 @@ g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=days_since_review_t,y=Reviewer_S
 ggplotly(g)
 ```
 
+## Calculamos la relacion existente entre las medias de las puntuaciones que dan los usuarios y el numero de dias transcurridos desde que dejaron el hotel.
+Se puede comprobar que no existe relacion distinguible entre las puntuaciones que dejan los usuarios y los dias transcurridos desde que abandonó el hotel. Todos dejan una media aproximada de {8-9} puntos.
+
 ```{r results='asis' ,message=FALSE,warning=FALSE}
-avgscore_days <- sqldf('SELECT days_since_review_t , avg(Reviewer_Score) as avg_score 
+avgscore_days <- sqldf('SELECT rango_dias, avg(Reviewer_Score) as avg_score 
                        from (
                           select case  
                               when days_since_review_t between 0 and 50 then \'a) 0 a 50\'
                               when days_since_review_t between 51 and 100 then \'b) 51 a 100\'
                               when days_since_review_t between 101 and 150 then \'c) 101 a 150\'
-                              else \'d) mas de 150\' end as rango_dias, Reviewer_Score,
-                              days_since_review_t
+                              when days_since_review_t between 151 and 200 then \'d) 151 a 200\'
+                              when days_since_review_t between 201 and 250 then \'e) 201 a 250\'
+                              when days_since_review_t between 251 and 300 then \'f) 251 a 300\'
+                              when days_since_review_t between 301 and 350 then \'g) 301 a 350\'
+                              when days_since_review_t between 351 and 400 then \'h) 351 a 400\'
+                              else \'i) mas de 400\' end as rango_dias, 
+                              Reviewer_Score
                             from df)
                          group by rango_dias order by rango_dias desc')
-g <- ggplot(avgscore_days,aes(x=days_since_review_t,y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with highest average score')
+g <- ggplot(avgscore_days,aes(x=rango_dias,y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('Relación entre las reviews y los dias transcurridos.')
 ggplotly(g)
 
 ```
@@ -153,7 +163,7 @@ ggplotly(g)
 
 In this part, we plot the text data by using package 'wordcloud2', which is a good interactive wordcloud package in R. It is definitely cooler than the classic wordcloud package.
 
-## WordCloud Positive Review
+## WordCloud Positive Review -> Original
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 reviews <- df[sample(nrow(df), 40000), ]
@@ -172,10 +182,6 @@ term_freq <- function(df,sent){
   mat_dtm <- as.matrix(dtm)
   v_dtm <- sort(rowSums(mat_dtm),decreasing = TRUE)
   FreqMat <- data.frame(word = names(v_dtm), Freq = v_dtm)
- # f <- index(FreqMat["the",])
- # print(f)
-  #FreqMat <- FreqMat[-f]
-  #print(FreqMat)
   FreqMat <- FreqMat[1:50,]
   return(FreqMat)
 }
@@ -183,11 +189,60 @@ term_freq <- function(df,sent){
 wordcloud2(data = term_freq(reviews,'pos'),minRotation = 0,maxRotation = 0)
 ```
 
+## WordCloud Positive Review -> Eliminada el articulo the
+
+```{r results='asis' ,message=FALSE,warning=FALSE}
+reviews <- df[sample(nrow(df), 40000), ]
+reviews <- reviews[reviews$Positive_Review!='No Positive',]
+reviews <- reviews[reviews$Negative_Review!='No Negative',]
+term_freq <- function(df,sent){
+  if(sent=='pos'){
+       corpus <- Corpus(VectorSource(df$Positive_Review))
+  }else{
+       corpus <- Corpus(VectorSource(df$Negative_Review))
+  }
+  corpus <- tm_map(corpus, removeWords, stopwords("SMART"))
+  corpus <- tm_map(corpus, removeWords, stopwords("en"))
+  corpus <- tm_map(corpus, stripWhitespace)
+  dtm <-TermDocumentMatrix(corpus)
+  mat_dtm <- as.matrix(dtm)
+  v_dtm <- sort(rowSums(mat_dtm),decreasing = TRUE)
+  FreqMat <- data.frame(word = names(v_dtm), Freq = v_dtm)
+  FreqMat <- FreqMat[1:50,]
+  return(FreqMat)
+}
+data = term_freq(reviews,'pos')
+#print(data)
+f <- data["the",]
+#print(f)
+indexIWant <- which(data[ , 1] == "the") # busco en la primera columna si existe la palabra the
+#print(indexIWant)
+#print(data[-c(indexIWant),]) # elimina la fila 3 -> the
+data <- data[-c(indexIWant),]
+#print(data)
+wordcloud2(data,minRotation = 0,maxRotation = 0)
+```
+
 ## WordCloud Negative Review
 
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
-wordcloud2(data = term_freq(reviews,'neg'),minRotation = 0,maxRotation = 0)
+# Original
+#wordcloud2(data = term_freq(reviews,'neg'),minRotation = 0,maxRotation = 0)
+
+# Eliminado el articulo the
+data = term_freq(reviews,'neg')
+#print(data)
+f <- data["the",]
+#print(f)
+indexIWant <- which(data[ , 1] == "the") # busco en la primera columna si existe la palabra the
+#print(indexIWant)
+#print(data[-c(indexIWant),]) # elimina la fila 3 -> the
+data <- data[-c(indexIWant),]
+#print(data)
+wordcloud2(data,minRotation = 0,maxRotation = 0)
+
+
 ```
 
 # Wrap it up
