@@ -37,7 +37,7 @@ library(tidytext)
 library(tidyr)
 library(gridExtra)
 library(topicmodels)
-df <- read.csv('./Datasets/Hotel_Reviews.csv')
+df <- read_csv('./Datasets/Hotel_Reviews.csv')
 
 #tratamos los datos para extraer el año de cada review en una nueva columna
 df <- df %>% 
@@ -46,7 +46,7 @@ df <- df %>%
                                           nchar(as.character(Review_Date))))
 #Añade una columa nueva a el data frame quitando los caracteres que no sean un numero sobre la columna data since review Ej: "3 days" -> 3
 df <- mutate(df, days_since_review_t= as.numeric(sub('[^0-9]+',"",days_since_review )))
-
+head(df)
 
 ```
 # Visulization of non-text data
@@ -85,25 +85,32 @@ hotel_details$city=sapply(str_split(hotel_details$Hotel_Address," "),function(x)
 ## Remove the mention of "United" as "London" in the city column and "Kingdom" as "United Kingdom" in the country column
 hotel_details$city=str_replace(hotel_details$city,"United","London")
 hotel_details$country=str_replace(hotel_details$country,"Kingdom","United Kingdom")
-library(dplyr)
-df%>%left_join(hotel_details[,4:6],by = 'Hotel_Address')->data
+df%>%left_join(hotel_details[,4:6],by = 'Hotel_Address')->df
 countries=paste(unique(hotel_details$country),collapse=",")
-message=paste("Los paises mencionados en el dataset son:", countries)
+message=paste("The countries mentioned in the dataset are:", countries)
+print(message)
+cities=paste(unique(hotel_details$city),collapse=",")
+message=paste("The cities mentioned in the dataset are:",  cities)
 print(message)
 ```
 ## Puntuacion media por Paises
 
 ```{r}
-data%>%ggplot(aes(x=as.factor(country),y=Average_Score))+geom_boxplot()+xlab("Country")+ylab("Average Score")
+df%>%ggplot(aes(x=as.factor(country),y=Average_Score))+geom_boxplot()+xlab("Country")+ylab("Average Score")
 
 ```
 ## Puntuacion media segun si son extranjeros o no 
 ```{r,message=F,warning=F,fig.align='center'}
-ind=which(is.na(data$Reviewer_Nationality))
-df=data[-ind,]
-df$tourist=ifelse(data_model$Reviewer_Nationality==data_model$country,"Si","No")
-df$tourist=as.factor(data_model$tourist)
-df%>%group_by(country,tourist)%>%summarise(average_score=mean(Average_Score))%>%ungroup()%>%mutate(average_score=average_score**7)%>%ggplot(aes(x=country,y=average_score,color=tourist,fill=tourist))+geom_bar(stat='identity',position='dodge')+xlab("Country")+ylab("Average Score")+scale_y_continuous(breaks = NULL)
+
+ind<-which(is.na(df$Reviewer_Nationality))
+print(ind)
+data_model<-df[-ind,]
+#data_model<-df
+#print(data_model$Reviewer_Nationality==data_model$country)
+data_model$tourist<-ifelse(data_model$Reviewer_Nationality==data_model$country,"Yes","No")
+data_model$tourist<-as.factor(data_model$tourist)
+#print(data_model)
+data_model%>%group_by(country,tourist)%>%summarise(average_score=mean(Average_Score))%>%ungroup()%>%mutate(average_score=average_score**7)%>%ggplot(aes(x=country,y=average_score,color=tourist,fill=tourist))+geom_bar(stat='identity',position='dodge')+xlab("Country")+ylab("Average Score")+scale_y_continuous(breaks = NULL)
 ```
 ## Scoring of Reviewer {.tabset}
 
