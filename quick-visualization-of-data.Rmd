@@ -28,13 +28,25 @@ library(leaflet.extras)
 library(ggplot2)
 library(wordcloud2)
 library(tm)
+library(dplyr)
+library(readr)
+library(stringr)
+library(broom)
+library(udpipe)
+library(tidytext)
+library(tidyr)
+library(gridExtra)
+library(topicmodels)
 df <- read.csv('./Datasets/Hotel_Reviews.csv')
 
-# añadimos una columna nueva, año en el que se hizo la review
+#tratamos los datos para extraer el año de cada review en una nueva columna
 df <- df %>% 
       mutate(Review_year = substr(as.character(Review_Date),
                                           nchar(as.character(Review_Date))-3,
                                           nchar(as.character(Review_Date))))
+#Añade una columa nueva a el data frame quitando los caracteres que no sean un numero sobre la columna data since review Ej: "3 days" -> 3
+df <- mutate(df, days_since_review_t= as.numeric(sub('[^0-9]+',"",days_since_review )))
+
 
 ```
 # Visulization of non-text data
@@ -76,7 +88,7 @@ hotel_details$country=str_replace(hotel_details$country,"Kingdom","United Kingdo
 library(dplyr)
 df%>%left_join(hotel_details[,4:6],by = 'Hotel_Address')->data
 countries=paste(unique(hotel_details$country),collapse=",")
-message=paste("The countries mentioned in the dataset are:", countries)
+message=paste("Los paises mencionados en el dataset son:", countries)
 print(message)
 ```
 ## Scoring of Reviewer {.tabset}
@@ -122,7 +134,7 @@ ggplotly(g)
 Numero de personas que dan una determinada puntuación 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 #Añade una columa nueva a el data frame quitando los caracteres que no sean un numero sobre la columna data since review Ej: "3 days" -> 3
-df <- mutate(df, days_since_review_t= as.numeric(sub('[^0-9]+',"",days_since_review )))
+#df <- mutate(df, days_since_review_t= as.numeric(sub('[^0-9]+',"",days_since_review )))
 #print(df)
 g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=days_since_review_t,y=Reviewer_Score)) + geom_point()+theme_bw()+geom_smooth(method = "lm")+ggtitle('Correlation between score and review frequency')
 ggplotly(g)
