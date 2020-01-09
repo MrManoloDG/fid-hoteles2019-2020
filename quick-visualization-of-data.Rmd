@@ -91,6 +91,20 @@ countries=paste(unique(hotel_details$country),collapse=",")
 message=paste("Los paises mencionados en el dataset son:", countries)
 print(message)
 ```
+## Puntuacion media por Paises
+
+```{r}
+data%>%ggplot(aes(x=as.factor(country),y=Average_Score))+geom_boxplot()+xlab("Country")+ylab("Average Score")
+
+```
+## Puntuacion media segun si son extranjeros o no 
+```{r,message=F,warning=F,fig.align='center'}
+ind=which(is.na(data$Reviewer_Nationality))
+df=data[-ind,]
+df$tourist=ifelse(data_model$Reviewer_Nationality==data_model$country,"Si","No")
+df$tourist=as.factor(data_model$tourist)
+df%>%group_by(country,tourist)%>%summarise(average_score=mean(Average_Score))%>%ungroup()%>%mutate(average_score=average_score**7)%>%ggplot(aes(x=country,y=average_score,color=tourist,fill=tourist))+geom_bar(stat='identity',position='dodge')+xlab("Country")+ylab("Average Score")+scale_y_continuous(breaks = NULL)
+```
 ## Scoring of Reviewer {.tabset}
 
 In this part we will generate some plots in ggplotly, which combine the good user interface of ggplot2 and the interactive characteristics of plotly.
