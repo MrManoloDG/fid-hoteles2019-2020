@@ -112,6 +112,22 @@ data_model$tourist<-as.factor(data_model$tourist)
 #print(data_model)
 data_model%>%group_by(country,tourist)%>%summarise(average_score=mean(Average_Score))%>%ungroup()%>%mutate(average_score=average_score**7)%>%ggplot(aes(x=country,y=average_score,color=tourist,fill=tourist))+geom_bar(stat='identity',position='dodge')+xlab("Country")+ylab("Average Score")+scale_y_continuous(breaks = NULL)
 ```
+## Top turist nacionality gives the best average_score in London
+
+```{r}
+data_model%>%filter(city=='London',Reviewer_Nationality %in% c("United States of America","Australia","Ireland","United Arab Emirates","Saudi Arabia"))%>%ggplot(aes(x=Reviewer_Nationality,y=Average_Score))+geom_boxplot()
+```
+
+## Distribución de los puntos segun si son turistas o locales en Londres
+
+```{r}
+data_model%>%filter(city=='London',Reviewer_Nationality!='United Kingdom')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='blue',fill='blue')+xlab("Average Score")+ylab("Counts")+ggtitle("Distribution of Scores \n (Tourists)")+scale_x_continuous(limits = c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->t
+
+data_model%>%filter(city=='London',Reviewer_Nationality=='United Kingdom')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='red',fill='red')+xlab("Average Score")+ylab("Counts")+ggtitle("Distribution of Scores \n (Locals)")+scale_x_continuous(limits=c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->l
+
+grid.arrange(t,l,ncol=2)
+```
+
 ## Scoring of Reviewer {.tabset}
 
 In this part we will generate some plots in ggplotly, which combine the good user interface of ggplot2 and the interactive characteristics of plotly.
