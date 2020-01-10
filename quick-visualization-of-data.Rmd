@@ -103,7 +103,7 @@ df%>%ggplot(aes(x=as.factor(country),y=Average_Score))+geom_boxplot()+xlab("Coun
 ```{r,message=F,warning=F,fig.align='center'}
 
 ind<-which(is.na(df$Reviewer_Nationality))
-print(ind)
+#print(ind)
 data_model<-df[-ind,]
 #data_model<-df
 #print(data_model$Reviewer_Nationality==data_model$country)
