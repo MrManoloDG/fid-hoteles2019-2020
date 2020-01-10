@@ -1,24 +1,31 @@
----
-title: "Quick visualization of data"
-author: "Jason Liu"
-date: "Aug 22,2017"
-output: 
-     html_document:
-            toc: true
-            highlight: zenburn
-            fig_height: 7
-            fig_width: 10
-            theme: sandstone
----
 
-# Introduction
 
-The dataset contains 515k+ rows of review data for 1493 hotels in Europe. It is a good source to practice some data visulization skills in R. As the
-publisher of the dataset, I create this RMarkdown file to quickly demonstrating some cool visulization packages in R. Let's do it!
+# Introduccion
 
-**One good feature of RMarkdown is the tabset, which can make your report more tide and clean. I incoporate it in the report, and highly recommend anyone who use RMarkdown try it!**
+El dataset contiene 515k filas de reseñas de usuarios paa 1493 hoteles de Europa. 
+Este dataset contiene los siguientes atributos:
 
-# Read Data and Load Packages
+-Hotel_Address: Dirección del Hotel
+-Review_Date: Fecha de cuando se realizo la Review.
+-Average_Score: Puntuación media del Hotel.
+-Hotel_Name: Nombre del hotel
+-Reviewer_Nationality: Nacionalidad del usuario que deja la reseña
+-Negative_Review: Comentarios negativos que el usuario ha dejado al hotel. Si no se pone ningun comentario negativo debe de ser: 'No Negative'
+-Review_Total_Negative_Word_Counts: Numero total de palabras en la review Negativa.
+-Positive_Review: Comentarios positivos que el usuario ha dejado al hotel. si no se pone ningun comentario positivo debe de ser: 'No Positive'
+-Review_Total_Positive_Word_Counts: Numero total de palabras en la review Positiva.
+-Reviewer_Score: Puntuacion que le ha dejado el usuario en la reseña al hotel.
+-Total_Number_of_Reviews_Reviewer_Has_Given: Numero de reseñas que ha hecho el usuario en el pasado.
+-Total_Number_of_Reviews: Numero total de reviews validas del hotel.
+-Tags: Etiquetas que el usuario le ha dejado al hotel.
+-days_since_review: Dias que han pasado desde que salio del hotel hasta que se hizo la reseña.
+-Additional_Number_of_Scoring:Hay algunos huespedes que hacen una puntuacion al servicio en vez de una reseña. Este numero indica cuantas puntuaciones son validad sin review.
+-lat: Latitud del hotel (geo)
+-lng: Longitud del hotel (geo)
+
+
+
+# Cargando librerias necesarias, el dataset y añadiendole nuevos campos en base a otros
 
 ```{r,message=FALSE,warning=FALSE}
 library(sqldf)
@@ -49,16 +56,8 @@ df <- mutate(df, days_since_review_t= as.numeric(sub('[^0-9]+',"",days_since_rev
 head(df)
 
 ```
-# Visulization of non-text data
 
-First, we will go through the non-text data as a starting point.
-
-## Location of hotels {.tabset}
-
-This part we make two plots in Leaflet, which is one of the most popular map package in R. By easily change some of the code you can make your plot 
-more fancy than you imagine!
-
-### Hotel Cluster
+## Localización de los hoteles
 
 Se muestran los hoteles de lujo mas visitados por los turistas a partir de las reviews realizadas en las ciudades mas visitadas en el ranking anual (Barcelona, Paris, Londes...)
 
@@ -67,15 +66,13 @@ location <- df[!duplicated(df[,c('lat','lng','Hotel_Address')]),c('lat','lng','H
 leaflet(data = location)%>%addProviderTiles(providers$Stamen.TonerLite)%>%addMarkers(popup = ~Hotel_Address,clusterOptions = markerClusterOptions())
 ```
 
-### Exact Location
-
 Muestra el mismo resultado que el anterior pero con el mapa a color, para su posible exportación a una aplicacion.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 leaflet(data = location)%>%addProviderTiles(providers$Esri.NatGeoWorldMap)%>%addMarkers(popup = ~Hotel_Address)
 ```
-## Añadiendo campo country a nuestro data frame
-Este campo se calcula
+## Añadiendo campo pais y ciudad a nuestro dataframe
+Este campo se calcula a partir del campo Hotel_Adress y se añade como nuevas columnas country 
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 library(stringr)
@@ -87,19 +84,24 @@ hotel_details$city=str_replace(hotel_details$city,"United","London")
 hotel_details$country=str_replace(hotel_details$country,"Kingdom","United Kingdom")
 df%>%left_join(hotel_details[,4:6],by = 'Hotel_Address')->df
 countries=paste(unique(hotel_details$country),collapse=",")
-message=paste("The countries mentioned in the dataset are:", countries)
+message=paste("Los paises mencionados en el dataset son:", countries)
 print(message)
 cities=paste(unique(hotel_details$city),collapse=",")
-message=paste("The cities mentioned in the dataset are:",  cities)
+message=paste("Las ciudades mencionadas en el dataset son:",  cities)
 print(message)
 ```
 ## Puntuacion media por Paises
+Se aprecia que Austria es el que tiene un rango menor de puntuaciones y es el que tendria las puntuaciones más altas de media.
 
 ```{r}
 df%>%ggplot(aes(x=as.factor(country),y=Average_Score))+geom_boxplot()+xlab("Country")+ylab("Average Score")
 
 ```
 ## Puntuacion media segun si son extranjeros o no 
+Se añade al dataset el campo turista, que si representa si es un extrangero o no.
+
+Con esto observamos que los que no son Turistas dejan una puntuación mayor que los que si lo son, a excepcion de Inglaterra
+
 ```{r,message=F,warning=F,fig.align='center'}
 
 ind<-which(is.na(df$Reviewer_Nationality))
@@ -112,40 +114,41 @@ data_model$tourist<-as.factor(data_model$tourist)
 #print(data_model)
 data_model%>%group_by(country,tourist)%>%summarise(average_score=mean(Average_Score))%>%ungroup()%>%mutate(average_score=average_score**7)%>%ggplot(aes(x=country,y=average_score,color=tourist,fill=tourist))+geom_bar(stat='identity',position='dodge')+xlab("Country")+ylab("Average Score")+scale_y_continuous(breaks = NULL)
 ```
-## Top turist nacionality gives the best average_score in London
+## Las puntuaciones medias dadas a hoteles de Barcelona segun una muestra de nacionalidaddes
+
+#TODO -- añadir 2 de cada continente
 
 ```{r}
-data_model%>%filter(city=='London',Reviewer_Nationality %in% c("United States of America","Australia","Ireland","United Arab Emirates","Saudi Arabia"))%>%ggplot(aes(x=Reviewer_Nationality,y=Average_Score))+geom_boxplot()
+data_model%>%filter(city=='Barcelona',Reviewer_Nationality %in% c("United States of America","Australia","Ireland","United Arab Emirates","Saudi Arabia"))%>%ggplot(aes(x=Reviewer_Nationality,y=Average_Score))+geom_boxplot()
 ```
 
-## Distribución de los puntos segun si son turistas o locales en Londres
+## Distribución de los puntos segun si son turistas o locales en Barcelona
+
+La distribucion de las puntuaciones dependiendo si los reviews son de turistas de afuera o de barcelona.
 
 ```{r}
-data_model%>%filter(city=='London',Reviewer_Nationality!='United Kingdom')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='blue',fill='blue')+xlab("Average Score")+ylab("Counts")+ggtitle("Distribution of Scores \n (Tourists)")+scale_x_continuous(limits = c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->t
+data_model%>%filter(city=='Barcelona',Reviewer_Nationality!='Spain')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='blue',fill='blue')+xlab("Average Score")+ylab("Counts")+ggtitle("Distribution of Scores \n (Tourists)")+scale_x_continuous(limits = c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->t
 
-data_model%>%filter(city=='London',Reviewer_Nationality=='United Kingdom')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='red',fill='red')+xlab("Average Score")+ylab("Counts")+ggtitle("Distribution of Scores \n (Locals)")+scale_x_continuous(limits=c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->l
+data_model%>%filter(city=='Barcelona',Reviewer_Nationality=='Spain')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='red',fill='red')+xlab("Average Score")+ylab("Counts")+ggtitle("Distribution of Scores \n (Locals)")+scale_x_continuous(limits=c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->l
 
 grid.arrange(t,l,ncol=2)
 ```
 
-## Scoring of Reviewer {.tabset}
-
-In this part we will generate some plots in ggplotly, which combine the good user interface of ggplot2 and the interactive characteristics of plotly.
-
+## Puntuaciones de usuario
 ### Distribution of scores
 
-Se muestran el numero de usuarios que han dado una puntuación al Hotel.
+Se muestran el numero de usuarios que han dado una cierta puntuación.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Reviewer_Score)) + geom_histogram(binwidth = 1)+theme_bw()+ggtitle('Distribution of reviewer socres')
 ggplotly(g)
 ```
 
-### Nationality with highest scores
+### Nacionalidad que da las mejores puntuaciones
 
 Las nacionalidaddes de usuarios que dan las mayores puntuaciones.
 
-#TODO - Ordenar por puntuaciones - DONE
+#### TODO - Ordenar por puntuaciones - DONE
 Modificacion ordenamos las nacionalidades por orden de puntuación media descendiente. Hecho con las funcion reorder en el eje x.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
@@ -155,7 +158,7 @@ g <- ggplot(avgscore_nation[1:20,],aes(x=reorder( Reviewer_Nationality, -avg_sco
 ggplotly(g)
 ```
 
-### Nationality with lowest scores
+### Nacionalidad que da las peores puntuaciones
 Las nacionalidaddes de usuarios que dan las peores puntuaciones.
 
 #TODO - Ordenar por puntuaciones - DONE
@@ -168,12 +171,13 @@ ggplotly(g)
 ```
 
 ### Comparacion Puntuacion y dias desde que dejó el hotel
-Numero de personas que dan una determinada puntuación 
+Muestra la correlacion entre la puntuacion y los dias que han pasado desde que dejo el hotel hasta hacer la review.
+
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 #Añade una columa nueva a el data frame quitando los caracteres que no sean un numero sobre la columna data since review Ej: "3 days" -> 3
 #df <- mutate(df, days_since_review_t= as.numeric(sub('[^0-9]+',"",days_since_review )))
 #print(df)
-g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=days_since_review_t,y=Reviewer_Score)) + geom_point()+theme_bw()+geom_smooth(method = "lm")+ggtitle('Correlation between score and review frequency')
+g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=days_since_review_t,y=Reviewer_Score)) + geom_point()+theme_bw()+geom_smooth(method = "lm")+ggtitle('Correlación entre la puntuacion y los dias desde estancia')
 ggplotly(g)
 ```
 
@@ -208,11 +212,10 @@ ggplotly(g)
 
 ```
 
-# Visulization of text data
+# Visualización de los datos de texto
+## WordCloud de las reviews positivas -> Original
 
-In this part, we plot the text data by using package 'wordcloud2', which is a good interactive wordcloud package in R. It is definitely cooler than the classic wordcloud package.
-
-## WordCloud Positive Review -> Original
+Se muestran las palabras mas frecuentes en las comentarios positivos de la review. Aparece el articulo the.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 reviews <- df[sample(nrow(df), 40000), ]
@@ -238,7 +241,8 @@ term_freq <- function(df,sent){
 wordcloud2(data = term_freq(reviews,'pos'),minRotation = 0,maxRotation = 0)
 ```
 
-## WordCloud Positive Review -> Eliminada el articulo the
+## WordCloud de las reviews positivas -> Eliminada el articulo the
+Se muestran las palabras mas frecuentes en las comentarios positivos de la review. No aparece el articulo the.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 reviews <- df[sample(nrow(df), 40000), ]
@@ -272,8 +276,9 @@ data <- data[-c(indexIWant),]
 wordcloud2(data,minRotation = 0,maxRotation = 0)
 ```
 
-## WordCloud Negative Review
+## WordCloud de las reviews negativas -> eliminado el articulo the
 
+Se muestran las palabras mas frecuentes en las comentarios negativos de la review. No aparece el articulo the.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 # Original
@@ -294,9 +299,8 @@ wordcloud2(data,minRotation = 0,maxRotation = 0)
 
 ```
 
-# Wrap it up
-
-You can have a lot of fun when visualizing the data, and what I have done is just a starting point! Can you make a further step based on that?
+# Histograma de la distribucion de las puntuaciones
+Se muestra un grafico que muestra la distribucion de las puntuaciones medias durante los años que se tienen en la review
 
 
 ```{r}
@@ -324,5 +328,5 @@ g <- ggplot(nationality, aes(Averager_Score)) + scale_fill_brewer(palette = "Acc
 g + geom_histogram(aes(fill=Review_year), 
                    binwidth = .1, 
                    col="black", #TODO poner en español
-                   size=.1) + labs(title="Histogram - Year wise distribution of Average ratings")
+                   size=.1) + labs(title="Histograma - Distribución anual de las puntuaciones medias")
 ```
