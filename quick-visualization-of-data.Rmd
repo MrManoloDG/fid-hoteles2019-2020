@@ -44,7 +44,7 @@ library(tidytext)
 library(tidyr)
 library(gridExtra)
 library(topicmodels)
-df <- read_csv('Hotel_Reviews.csv')
+df <- read_csv('./Datasets/Hotel_Reviews.csv')
 
 #tratamos los datos para extraer el año de cada review en una nueva columna
 df <- df %>% 
