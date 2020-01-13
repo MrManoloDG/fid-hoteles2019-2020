@@ -44,7 +44,7 @@ library(tidytext)
 library(tidyr)
 library(gridExtra)
 library(topicmodels)
-df <- read_csv('./Datasets/Hotel_Reviews.csv')
+df <- read_csv('Hotel_Reviews.csv')
 
 #tratamos los datos para extraer el año de cada review en una nueva columna
 df <- df %>% 
@@ -94,7 +94,7 @@ print(message)
 Se aprecia que Austria es el que tiene un rango menor de puntuaciones y es el que tendria las puntuaciones más altas de media.
 
 ```{r}
-df%>%ggplot(aes(x=as.factor(country),y=Average_Score))+geom_boxplot()+xlab("Country")+ylab("Average Score")
+df%>%ggplot(aes(x=as.factor(country),y=Average_Score))+geom_boxplot()+xlab("País")+ylab("Puntuación media")
 
 ```
 ## Puntuacion media segun si son extranjeros o no 
@@ -109,15 +109,15 @@ ind<-which(is.na(df$Reviewer_Nationality))
 data_model<-df[-ind,]
 #data_model<-df
 #print(data_model$Reviewer_Nationality==data_model$country)
-data_model$tourist<-ifelse(data_model$Reviewer_Nationality==data_model$country,"Yes","No")
-data_model$tourist<-as.factor(data_model$tourist)
+data_model$turista<-ifelse(data_model$Reviewer_Nationality==data_model$country,"Sí","No")
+data_model$turista<-as.factor(data_model$turista)
 #print(data_model)
-data_model%>%group_by(country,tourist)%>%summarise(average_score=mean(Average_Score))%>%ungroup()%>%mutate(average_score=average_score**7)%>%ggplot(aes(x=country,y=average_score,color=tourist,fill=tourist))+geom_bar(stat='identity',position='dodge')+xlab("Country")+ylab("Average Score")+scale_y_continuous(breaks = NULL)
+data_model%>%group_by(country,turista)%>%summarise(average_score=mean(Average_Score))%>%ungroup()%>%mutate(average_score=average_score**7)%>%ggplot(aes(x=country,y=average_score,color=turista,fill=turista))+geom_bar(stat='identity',position='dodge')+xlab("País")+ylab("Puntuación media")+scale_y_continuous(breaks = NULL)
 ```
 ## Las puntuaciones medias dadas a hoteles de Barcelona segun una muestra de nacionalidaddes
 
 ```{r}
-data_model%>%filter(city=='Barcelona',Reviewer_Nationality %in% c("United States of America","Australia","Ireland","United Arab Emirates","Saudi Arabia"))%>%ggplot(aes(x=Reviewer_Nationality,y=Average_Score))+geom_boxplot()
+data_model%>%filter(city=='Barcelona',Reviewer_Nationality %in% c("United States of America","Australia","Ireland","United Arab Emirates","Saudi Arabia"))%>%ggplot(aes(x=Reviewer_Nationality,y=Average_Score))+geom_boxplot()+xlab("País")+ylab("Puntuación media")
 ```
 
 ## Distribución de los puntos segun si son turistas o locales en Barcelona
@@ -125,9 +125,9 @@ data_model%>%filter(city=='Barcelona',Reviewer_Nationality %in% c("United States
 La distribucion de las puntuaciones dependiendo si las reviews son de turistas de fuera o de Barcelona.
 
 ```{r}
-data_model%>%filter(city=='Barcelona',Reviewer_Nationality!='Spain')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='blue',fill='blue')+xlab("Average Score")+ylab("Counts")+ggtitle("Distribution of Scores \n (Tourists)")+scale_x_continuous(limits = c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->t
+data_model%>%filter(city=='Barcelona',Reviewer_Nationality!='Spain')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='blue',fill='blue')+xlab("Puntuación media")+ylab("Contador")+ggtitle("Distribución de puntos \n (Turistas)")+scale_x_continuous(limits = c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->t
 
-data_model%>%filter(city=='Barcelona',Reviewer_Nationality=='Spain')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='red',fill='red')+xlab("Average Score")+ylab("Counts")+ggtitle("Distribution of Scores \n (Locals)")+scale_x_continuous(limits=c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->l
+data_model%>%filter(city=='Barcelona',Reviewer_Nationality=='Spain')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='red',fill='red')+xlab("Puntuación media")+ylab("Contador")+ggtitle("Distribución de puntos \n (Locales)")+scale_x_continuous(limits=c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->l
 
 grid.arrange(t,l,ncol=2)
 ```
@@ -138,7 +138,7 @@ grid.arrange(t,l,ncol=2)
 Se muestran el numero de usuarios que han dado una cierta puntuación.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
-g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Reviewer_Score)) + geom_histogram(binwidth = 1)+theme_bw()+ggtitle('Distribution of reviewer socres')
+g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Reviewer_Score)) + geom_histogram(binwidth = 1)+theme_bw()+ggtitle('Distribución de las puntuaciones')+xlab("Puntuación del cliente")+ylab("Contador")
 ggplotly(g)
 ```
 
@@ -152,7 +152,7 @@ Modificacion ordenamos las nacionalidades por orden de puntuación media descend
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 avgscore_nation <- sqldf('SELECT Reviewer_Nationality, avg(Reviewer_Score) as avg_score from df group by Reviewer_Nationality order by avg(Reviewer_Score) desc')
 avgscore_nation[166,1]<-'UnKnown'
-g <- ggplot(avgscore_nation[1:20,],aes(x=reorder( Reviewer_Nationality, -avg_score),y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with highest average score')
+g <- ggplot(avgscore_nation[1:20,],aes(x=reorder( Reviewer_Nationality, -avg_score),y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('TOP-20 de las nacionalidades con puntuación media más alta')+ylab("Puntuación media")+xlab("Nacionalidad")
 ggplotly(g)
 ```
 
@@ -163,7 +163,7 @@ Las nacionalidaddes de usuarios que dan las peores puntuaciones.
 Modificacion ordenamos las nacionalidades por orden de puntuación media ascendiente Hecho con las funcion reorder en el eje x.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
-g <- ggplot(avgscore_nation[207:227,],aes(x=reorder( Reviewer_Nationality, avg_score),y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('20 Nationalities with lowest average score')
+g <- ggplot(avgscore_nation[207:227,],aes(x=reorder( Reviewer_Nationality, avg_score),y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('TOP-20 de las nacionalidades con las puntuaciones medias más bajas')+ylab("Puntuación media")+xlab("Nacionalidad")
 ggplotly(g)
 
 ```
@@ -175,7 +175,7 @@ Muestra la correlacion entre la puntuacion y los dias que han pasado desde que d
 #Añade una columa nueva a el data frame quitando los caracteres que no sean un numero sobre la columna data since review Ej: "3 days" -> 3
 #df <- mutate(df, days_since_review_t= as.numeric(sub('[^0-9]+',"",days_since_review )))
 #print(df)
-g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=days_since_review_t,y=Reviewer_Score)) + geom_point()+theme_bw()+geom_smooth(method = "lm")+ggtitle('Correlación entre la puntuacion y los dias desde estancia')
+g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=days_since_review_t,y=Reviewer_Score)) + geom_point()+theme_bw()+geom_smooth(method = "lm")+ggtitle('Correlación entre la puntuación y los dias desde estancia')+ylab("Puntuación del cliente")+xlab("Días transcurridos desde estancia")
 ggplotly(g)
 ```
 
@@ -198,7 +198,7 @@ avgscore_days <- sqldf('SELECT rango_dias, avg(Reviewer_Score) as avg_score
                               Reviewer_Score
                             from df)
                          group by rango_dias order by rango_dias desc')
-g <- ggplot(avgscore_days,aes(x=rango_dias,y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('Relación entre las reviews y los dias transcurridos.')
+g <- ggplot(avgscore_days,aes(x=rango_dias,y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('Relación entre las reviews y los dias transcurridos.')+ylab("Contador")
 ggplotly(g)
 
 ```
@@ -322,7 +322,7 @@ nationality <- df %>%
   ) %>%
   arrange(Reviewer_Nationality,Review_year)
 
-g <- ggplot(nationality, aes(Averager_Score)) + scale_fill_brewer(palette = "Accent")
+g <- ggplot(nationality, aes(Averager_Score)) + scale_fill_brewer(palette = "Accent")+ylab("Contador")+xlab("Puntuación media")
 g + geom_histogram(aes(fill=Review_year), 
                    binwidth = .1, 
                    col="black", #TODO poner en español
