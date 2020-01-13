@@ -1,0 +1,8 @@
+COMO ABRIR UN NOTEBOOK
+
+abrimos anaconda prompt
+
+cd C:\Users\jdsj6\Desktop\MLE practicas\2. Lectura de datasets
+
+jupyter notebook
+
