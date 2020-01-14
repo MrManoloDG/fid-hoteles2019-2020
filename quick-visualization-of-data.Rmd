@@ -277,6 +277,10 @@ indexIWant <- which(data[ , 1] == "the") # busco en la primera columna si existe
 data <- data[-c(indexIWant),]
 #print(data)
 wordcloud2(data,minRotation = 0,maxRotation = 0)
+
+#######
+# Al Exportar a HTML solo se muestra la primera de las graficas de wordcloud2, estas se pueden ver ejecutando el codigo dentro de Rstudio
+#######
 ```
 
 ## WordCloud de las reviews negativas -> eliminado el articulo the
@@ -300,6 +304,9 @@ data <- data[-c(indexIWant),]
 #print(data)
 wordcloud2(data,minRotation = 0,maxRotation = 0)
 
+#######
+# Al Exportar a HTML solo se muestra la primera de las graficas de wordcloud2, estas se pueden ver ejecutando el codigo dentro de Rstudio
+#######
 
 ```
 
