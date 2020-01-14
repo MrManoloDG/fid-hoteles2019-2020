@@ -1,6 +1,11 @@
 Proyecto_Kaggle
 
-Hoteles - Proyecto FID 
+Análisis de Hoteles de lujo en Europa - Proyecto FID 
 
-El dataset lo puedes descargar de aqui
+Participantes:
+ - Manuel Díaz Gil
+ - Lucía Falcón García
+ - José D. Sánchez Jiménez
+
+El dataset lo puedes descargar aqui
   - https://www.kaggle.com/jiashenliu/515k-hotel-reviews-data-in-europe/download
