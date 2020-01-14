@@ -2,7 +2,7 @@
 
 # Introduccion
 
-El dataset contiene 515k filas de reseñas de usuarios paa 1493 hoteles de Europa. 
+El dataset contiene 515k filas de reseñas de usuarios paa 1493 hoteles de lujo en Europa. 
 Este dataset contiene los siguientes atributos:
 
 -Hotel_Address: Dirección del Hotel
@@ -46,12 +46,13 @@ library(gridExtra)
 library(topicmodels)
 df <- read_csv('./Datasets/Hotel_Reviews.csv')
 
-#tratamos los datos para extraer el año de cada review en una nueva columna
+#tratamos los datos para extraer el año de cada review en un nuevo atributo
 df <- df %>% 
       mutate(Review_year = substr(as.character(Review_Date),
                                           nchar(as.character(Review_Date))-3,
                                           nchar(as.character(Review_Date))))
-#Añade una columa nueva a el data frame quitando los caracteres que no sean un numero sobre la columna data since review Ej: "3 days" -> 3
+
+#Añade un nuevo atributo al data frame eliminando los caracteres que no sean un numero sobre la columna days_since_review => Ej: "3 days" -> 3
 df <- mutate(df, days_since_review_t= as.numeric(sub('[^0-9]+',"",days_since_review )))
 head(df)
 
@@ -59,20 +60,22 @@ head(df)
 
 ## Localización de los hoteles
 
-Se muestran los hoteles de lujo mas visitados por los turistas a partir de las reviews realizadas en las ciudades mas visitadas en el ranking anual (Barcelona, Paris, Londes...)
+En la siguiente imagen se muestran los hoteles de lujo mas visitados por los turistas a partir de las reviews realizadas en las ciudades mas visitadas en el ranking anual (Barcelona, Paris, Londes...)
+El mapa permite hacer zoom para distinguir las zonas donde se encuentran los hoteles.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 location <- df[!duplicated(df[,c('lat','lng','Hotel_Address')]),c('lat','lng','Hotel_Address','Average_Score')]
 leaflet(data = location)%>%addProviderTiles(providers$Stamen.TonerLite)%>%addMarkers(popup = ~Hotel_Address,clusterOptions = markerClusterOptions())
 ```
 
-Muestra el mismo resultado que el anterior pero con el mapa a color, para su posible exportación a una aplicacion.
+El siguiete mapa muestra el mismo resultado que el anterior pero con el mapa a color, para la exportación a una posible aplicacion. Tambiién permite aumentar y disminuir el zoom.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 leaflet(data = location)%>%addProviderTiles(providers$Esri.NatGeoWorldMap)%>%addMarkers(popup = ~Hotel_Address)
 ```
-## Añadiendo campo pais y ciudad a nuestro dataframe
-Este campo se calcula a partir del campo Hotel_Adress y se añade como nuevas columnas country 
+
+## Añadimos un par de nuevos atributos, pais y ciudad, a nuestro dataframe.
+Estos atributos se calculan a partir del campo direccion del hotel "Hotel_Adress", y se añade como nuevos atributos country y cities.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 library(stringr)
@@ -90,17 +93,19 @@ cities=paste(unique(hotel_details$city),collapse=",")
 message=paste("Las ciudades mencionadas en el dataset son:",  cities)
 print(message)
 ```
+
 ## Puntuacion media por Paises
-Se aprecia que Austria es el que tiene un rango menor de puntuaciones y es el que tendria las puntuaciones más altas de media.
+En la siguiente gráfica se puede apreciar el rango de puntuaciones media por paises, observando como Austria es el país que tendria las puntuaciones de media más altas.
 
 ```{r}
 df%>%ggplot(aes(x=as.factor(country),y=Average_Score))+geom_boxplot()+xlab("País")+ylab("Puntuación media")
 
 ```
-## Puntuacion media segun si son extranjeros o no 
-Se añade al dataset el campo turista, que si representa si es un extrangero o no.
 
-Con esto observamos que los que no son Turistas dejan una puntuación mayor que los que si lo son, a excepcion de Inglaterra
+## Puntuacion media por países según si el usuario que puntúa es extranjero o no 
+Se añade al dataset el atributo turista, que representa si es un extranjero o no el usuario que puntúa.
+
+En la siguiete gráfica observamos que los NO turistas son los que dejan una puntuación mayor que los que si lo son, a excepcion de Reino Unido.
 
 ```{r,message=F,warning=F,fig.align='center'}
 
@@ -114,15 +119,17 @@ data_model$turista<-as.factor(data_model$turista)
 #print(data_model)
 data_model%>%group_by(country,turista)%>%summarise(average_score=mean(Average_Score))%>%ungroup()%>%mutate(average_score=average_score**7)%>%ggplot(aes(x=country,y=average_score,color=turista,fill=turista))+geom_bar(stat='identity',position='dodge')+xlab("País")+ylab("Puntuación media")+scale_y_continuous(breaks = NULL)
 ```
+
 ## Las puntuaciones medias dadas a hoteles de Barcelona segun una muestra de nacionalidaddes
+En la siguiente gráfica, enfocada a la ciudad de Barcelona, hemos elgido 5 países de diferentes continentes para observar cuales son los rangos de puntuaciones que le dan a la ciudad.
 
 ```{r}
 data_model%>%filter(city=='Barcelona',Reviewer_Nationality %in% c("United States of America","Australia","Ireland","United Arab Emirates","Saudi Arabia"))%>%ggplot(aes(x=Reviewer_Nationality,y=Average_Score))+geom_boxplot()+xlab("País")+ylab("Puntuación media")
 ```
 
-## Distribución de los puntos segun si son turistas o locales en Barcelona
+## Distribución de los puntos segun si son turistas, o locales, en Barcelona
 
-La distribucion de las puntuaciones dependiendo si las reviews son de turistas de fuera o de Barcelona.
+En las dos gráficas que se muestran a continuación se observa la distribución que siguen las puntuaciones media que le dan los usuarios a los hoteles de Barcelona, dependiendo de si son de turistas o residentes locales, es decir, de nacionalidad española (locales) o no (turistas).
 
 ```{r}
 data_model%>%filter(city=='Barcelona',Reviewer_Nationality!='Spain')%>%ggplot(aes(x=Average_Score))+geom_histogram(alpha=0.3,color='blue',fill='blue')+xlab("Puntuación media")+ylab("Contador")+ggtitle("Distribución de puntos \n (Turistas)")+scale_x_continuous(limits = c(6,10))+theme(plot.title = element_text(size=16,hjust=0.5))->t
@@ -133,9 +140,9 @@ grid.arrange(t,l,ncol=2)
 ```
 
 ## Puntuaciones de usuario
-### Distribution of scores
+## Distribución de las puntuaciones. Solo para los 10.000 primeros registros.
 
-Se muestran el numero de usuarios que han dado una cierta puntuación.
+En la siguiente gráfica se muestran el número de usuarios que han dado una determinada puntuación. Si colocas el punturo del mouse por encima de las columnas se observa el número de usuarios que han dado dicha puntuación.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Reviewer_Score)) + geom_histogram(binwidth = 1)+theme_bw()+ggtitle('Distribución de las puntuaciones')+xlab("Puntuación del cliente")+ylab("Contador")
@@ -144,10 +151,8 @@ ggplotly(g)
 
 ### Nacionalidad que da las mejores puntuaciones
 
-Las nacionalidaddes de usuarios que dan las mayores puntuaciones.
-
-#### TODO - Ordenar por puntuaciones - DONE
-Modificacion ordenamos las nacionalidades por orden de puntuación media descendiente. Hecho con las funcion reorder en el eje x.
+A continuación, podemos observar las nacionalidades de los usuarios que dan las mayores puntuaciones medias, y las ordenamos de forma descendente para visualizar mejor el resultado.
+Si colocamos el puntero del mouse encima de la columna observaos el valor de dicha puntuación media.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 avgscore_nation <- sqldf('SELECT Reviewer_Nationality, avg(Reviewer_Score) as avg_score from df group by Reviewer_Nationality order by avg(Reviewer_Score) desc')
@@ -157,10 +162,8 @@ ggplotly(g)
 ```
 
 ### Nacionalidad que da las peores puntuaciones
-Las nacionalidaddes de usuarios que dan las peores puntuaciones.
-
-#TODO - Ordenar por puntuaciones - DONE
-Modificacion ordenamos las nacionalidades por orden de puntuación media ascendiente Hecho con las funcion reorder en el eje x.
+En cambio, en la siguiente gráfica, observamos justo lo contrario a la anterior. Ahora visualizamos las nacionalidaddes de usuarios que dan las peores puntuaciones medias. Ordenamos el resultado de forma ascendente para interpretar mejor el resultado.
+Si colocamos el puntero del mouse encima de la columna observaos el valor de dicha puntuación media.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 g <- ggplot(avgscore_nation[207:227,],aes(x=reorder( Reviewer_Nationality, avg_score),y=avg_score)) + geom_bar(stat = 'identity')+theme_bw()+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ggtitle('TOP-20 de las nacionalidades con las puntuaciones medias más bajas')+ylab("Puntuación media")+xlab("Nacionalidad")
@@ -168,8 +171,8 @@ ggplotly(g)
 
 ```
 
-### Comparacion Puntuacion y dias desde que dejó el hotel
-Muestra la correlacion entre la puntuacion y los dias que han pasado desde que dejo el hotel hasta hacer la review.
+### Comparacion entre los atributos Puntuacion y Dias desde que abandonó el hotel
+Muestra la correlacion existente entre la puntuacion y los dias que han pasado desde que el usuario abandonó el hotel y publicó la review.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 #Añade una columa nueva a el data frame quitando los caracteres que no sean un numero sobre la columna data since review Ej: "3 days" -> 3
@@ -179,8 +182,10 @@ g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=days_since_review_t,y=Reviewer_S
 ggplotly(g)
 ```
 
-## Calculamos la relacion existente entre las medias de las puntuaciones que dan los usuarios y el numero de dias transcurridos desde que dejaron el hotel.
-Se puede comprobar que no existe relacion distinguible entre las puntuaciones que dejan los usuarios y los dias transcurridos desde que abandonó el hotel. Todos dejan una media aproximada de {8-9} puntos.
+## Relación entre puntuacion media y días desde que abandonó el hotel.
+A continuación calculamos la relacion existente entre las untuaciones medias que dan los usuarios y el numero de dias transcurridos desde que abandonaron el hotel.
+Agrupamos los dias desde que abandonaron el hotel por rangos.
+Se puede comprobar que no existe relacion distinguible entre las puntuaciones que dejan los usuarios y los dias transcurridos desde que abandonan el hotel. Todos dejan aproximadamente una media entre [8-9] puntos.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 avgscore_days <- sqldf('SELECT rango_dias, avg(Reviewer_Score) as avg_score 
@@ -204,7 +209,7 @@ ggplotly(g)
 ```
 
 ```
-### Relationship between frequency of review and score
+### Relationship between frequency of review and score - codigo original
 g <- ggplot(df[sample(nrow(df), 10000), ],aes(x=Total_Number_of_Reviews_Reviewer_Has_Given,y=Reviewer_Score)) + geom_point()+theme_bw()+geom_smooth(method = "lm")+ggtitle('Correlation between score and review frequency')
 ggplotly(g)
 
@@ -213,7 +218,7 @@ ggplotly(g)
 # Visualización de los datos de texto
 ## WordCloud de las reviews positivas -> Original
 
-Se muestran las palabras mas frecuentes en las comentarios positivos de la review. Aparece el articulo the.
+En la siguiente grafica se muestran las palabras usadas con mas frecuencia en los comentarios positivos de las reviews. Problema: Aparece el articulo the. Más adelante lo eliminamos.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 reviews <- df[sample(nrow(df), 40000), ]
@@ -239,8 +244,8 @@ term_freq <- function(df,sent){
 wordcloud2(data = term_freq(reviews,'pos'),minRotation = 0,maxRotation = 0)
 ```
 
-## WordCloud de las reviews positivas -> Eliminada el articulo the
-Se muestran las palabras mas frecuentes en las comentarios positivos de la review. No aparece el articulo the.
+## WordCloud de las reviews positivas -> Eliminado el articulo the
+Se muestran las palabras mas frecuentes en las comentarios positivos de la review. No aparece el articulo the. Para eliminarlo buscamos en la primera columna del data.frame la posicion en la que se encuentra dicho articulo, y luego lo eliminamos.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 reviews <- df[sample(nrow(df), 40000), ]
@@ -276,7 +281,8 @@ wordcloud2(data,minRotation = 0,maxRotation = 0)
 
 ## WordCloud de las reviews negativas -> eliminado el articulo the
 
-Se muestran las palabras mas frecuentes en las comentarios negativos de la review. No aparece el articulo the.
+Es una gráfica similar a la anterior pero ahora se muestran las palabras mas frecuentes en las comentarios negativos. 
+Eliminamos también el articulo the.
 
 ```{r results='asis' ,message=FALSE,warning=FALSE}
 # Original
@@ -298,7 +304,7 @@ wordcloud2(data,minRotation = 0,maxRotation = 0)
 ```
 
 # Histograma de la distribucion de las puntuaciones
-Se muestra un grafico que muestra la distribucion de las puntuaciones medias durante los años que se tienen en la review
+En la siguiente gráfica se muestra la distribucion que siguen las puntuaciones medias que dan los usuarios durante los años que se tienen en la reviews.
 
 
 ```{r}
